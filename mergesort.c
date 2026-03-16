@@ -48,18 +48,6 @@ void merge(uint64_t *T, const uint64_t size) {
 /*
    merge sort -- sequential, parallel --
 */
-
-/*
-   ------------------------------------------------------------------------
-   Sequential recursive MergeSort
-   ------------------------------------------------------------------------
-   This follows the PDF specification:
-
-   (a) If the input has fewer than two elements, return.
-   (b) Partition the input sequence into two halves.
-   (c) Apply mergesort to the two subsequences.
-   (d) Merge the two sorted subsequences.
-*/
 static void sequential_merge_sort(uint64_t *T, uint64_t size) {
     if (size < 2) {
         return;
@@ -115,18 +103,13 @@ static void sequential_merge_sort(uint64_t *T, uint64_t size) {
 // }
 
 /*
-   Performance improvement:
-   Creating OpenMP tasks has a cost. If the subarray is very small,
-   that cost can be larger than the work of sorting it. Therefore,
-   we stop creating tasks for small subproblems and sort them
+   the performance improvement:
+   creating OpenMP tasks has a cost, so if the subarray is very small,
+   that cost can be larger than the work of sorting it.so
+   we don't create tasks for small subproblems and sort them
    sequentially instead.
 */
 
-/*
-   ------------------------------------------------------------------------
-   Parallel recursive MergeSort with OpenMP tasks
-   ------------------------------------------------------------------------
-*/
 static void parallel_mergesort_rec(uint64_t *T, uint64_t size) {
     if (size < 2) {
         return;
@@ -135,39 +118,27 @@ static void parallel_mergesort_rec(uint64_t *T, uint64_t size) {
     uint64_t mid = size / 2;
     uint64_t stop = 2048;
     /*
-       If the subproblem is small, solve it sequentially to avoid the
+       if the subproblem is small, solve it sequentially to avoid the
        overhead of creating too many tiny tasks.
     */
     if (size <= stop) {
         sequential_merge_sort(T, mid);
         sequential_merge_sort(T + mid, mid);
     } else {
-        /* Sort left half in a task */
         #pragma omp task shared(T)
-        parallel_mergesort_rec(T, mid);
+        parallel_mergesort_rec(T, mid); //left half
 
-        /* Sort right half in a task */
         #pragma omp task shared(T)
-        parallel_mergesort_rec(T + mid, mid);
+        parallel_mergesort_rec(T + mid, mid); //right half
 
-        /* Wait until both halves are sorted before merging */
-        #pragma omp taskwait
+        #pragma omp taskwait //why? because we need to wait for the left and right halves to be sorted before merging them
     }
 
-    /* Merge the two sorted halves */
     merge(T, mid);
 }
 
-/*
-   ------------------------------------------------------------------------
-   Top-level parallel MergeSort
-   ------------------------------------------------------------------------
-   Name matches what main() calls.
-*/
+
 void parallel_merge_sort(uint64_t *T, const uint64_t size) {
-    if (size < 2) {
-        return;
-    }
 
     #pragma omp parallel
     {
