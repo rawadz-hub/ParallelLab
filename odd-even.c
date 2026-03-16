@@ -12,24 +12,6 @@
    odd-even sort -- sequential, parallel --
 */
 
-/*
-   ------------------------------------------------------------------------
-   Sequential odd-even sort
-   ------------------------------------------------------------------------
-   This follows exactly the algorithm given in the PDF:
-
-   do
-       sorted = true
-       for i in 0..N-2 with step 2:
-           if T[i] > T[i+1]:
-               swap
-               sorted = false
-       for i in 1..N-2 with step 2:
-           if T[i] > T[i+1]:
-               swap
-               sorted = false
-   while (sorted == false)  :contentReference[oaicite:0]{index=0}
-*/
 void sequential_oddeven_sort(uint64_t *T, const uint64_t size) {
     if (size < 2) {
         return;
@@ -38,103 +20,60 @@ void sequential_oddeven_sort(uint64_t *T, const uint64_t size) {
     int sorted;
 
     do {
-        sorted = 1;  // "sorted = true" in the PDF
+        sorted = 1; 
 
-        // First pass: even indices, step 2
+        //this is for even indices, step 2
         for (uint64_t i = 0; i < size - 1; i += 2) {
             if (T[i] > T[i + 1]) {
                 uint64_t tmp = T[i];
                 T[i] = T[i + 1];
                 T[i + 1] = tmp;
-                sorted = 0;  // "sorted = false" in the PDF
-            }
+                sorted = 0;  }
         }
 
-        // Second pass: odd indices, step 2
+        //this is for the odd indices, step 2
         for (uint64_t i = 1; i < size - 1; i += 2) {
             if (T[i] > T[i + 1]) {
                 uint64_t tmp = T[i];
                 T[i] = T[i + 1];
                 T[i + 1] = tmp;
-                sorted = 0;  // "sorted = false" in the PDF
+                sorted = 0;  
             }
         }
 
-    } while (!sorted);  // "while (sorted == false)" in the PDF
+    } while (!sorted);
 }
 
-/*
-   ------------------------------------------------------------------------
-   Parallel odd-even sort
-   ------------------------------------------------------------------------
-   This also follows the PDF algorithm exactly, but parallelizes each of the
-   two passes. The key reason this works well is that, inside one pass, the
-   compared pairs do NOT overlap:
-
-   Even pass:
-       (0,1), (2,3), (4,5), ...
-   Odd pass:
-       (1,2), (3,4), (5,6), ...
-
-   So different iterations can run in parallel safely. This is exactly why
-   the PDF says odd-even sort is more adapted than bubble sort for parallel
-   implementation. :contentReference[oaicite:1]{index=1}
+/*parallel odd-even sort:
+    we parallelize each of the two passes(even and odd)
 */
 void parallel_oddeven_sort(uint64_t *T, const uint64_t size) {
-    if (size < 2) {
-        return;
-    }
-
     int sorted;
-
     do {
-        sorted = 1;  // corresponds to "sorted = true" in the PDF
+        sorted = 1;
 
-        /*
-           First loop of the PDF:
-               for i in 0..N-2 with step 2
-
-           We parallelize it with OpenMP.
-           The pairs are disjoint:
-               (0,1), (2,3), (4,5), ...
-           so no two iterations write the same array cell.
-        */
+        //the pairs are disjoint so no two iterations write the same array cell
+        
         #pragma omp parallel for reduction(&&:sorted) schedule(static)
         for (uint64_t i = 0; i < size - 1; i += 2) {
             if (T[i] > T[i + 1]) {
                 uint64_t tmp = T[i];
                 T[i] = T[i + 1];
                 T[i + 1] = tmp;
-                sorted = 0;  // corresponds to "sorted = false" in the PDF
+                sorted = 0;
             }
         }
 
-        /*
-           Second loop of the PDF:
-               for i in 1..N-2 with step 2
-
-           Again we parallelize it.
-           The compared pairs are:
-               (1,2), (3,4), (5,6), ...
-           which are also disjoint inside this phase.
-        */
+        //same here
         #pragma omp parallel for reduction(&&:sorted) schedule(static)
         for (uint64_t i = 1; i < size - 1; i += 2) {
             if (T[i] > T[i + 1]) {
                 uint64_t tmp = T[i];
                 T[i] = T[i + 1];
                 T[i + 1] = tmp;
-                sorted = 0;  // corresponds to "sorted = false" in the PDF
+                sorted = 0; 
             }
         }
-
-        /*
-           This matches the last line of the PDF:
-               while (sorted == false)
-
-           If neither the even phase nor the odd phase performed any swap,
-           then sorted stays true and the algorithm stops.
-        */
     } while (!sorted);
 }
 
